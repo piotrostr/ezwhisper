@@ -73,8 +73,8 @@ impl MenuBar {
             let button: id = msg_send![self.status_item, button];
             let title = match status {
                 AppStatus::Idle => "EZ",
-                AppStatus::Recording => "REC",
-                AppStatus::Transcribing => "...",
+                AppStatus::Recording => "R",
+                AppStatus::Transcribing => "T",
             };
             let ns_title = NSString::alloc(nil).init_str(title);
             let _: () = msg_send![button, setTitle: ns_title];
