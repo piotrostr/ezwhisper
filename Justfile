@@ -1,10 +1,10 @@
 # run the app
 start:
-    cargo run --release
+    cargo run --release --bin ezwhisper
 
 # development with live reload
 dev:
-    cargo watch -x 'run --release'
+    EZWHISPER_ENTER=true cargo watch -x 'run --release --bin ezwhisper'
 
 # build release binary
 build:
