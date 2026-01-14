@@ -1,0 +1,35 @@
+[package]
+name = "ezwhisper"
+version = "0.1.0"
+edition = "2021"
+description = "Push-to-talk speech-to-text for macOS with Logitech mouse support"
+license = "MIT"
+repository = "https://github.com/piotrostr/ezwhisper"
+keywords = ["speech-to-text", "macos", "logitech", "transcription"]
+categories = ["multimedia::audio", "accessibility"]
+
+[[bin]]
+name = "ezwhisper"
+path = "src/main.rs"
+
+[dependencies]
+cpal = "0.15"
+rdev = "0.5"
+tokio = { version = "1", features = ["full", "sync"] }
+tokio-tungstenite = "0.24"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+hound = "3.5"
+base64 = "0.22"
+envy = "0.4"
+reqwest = { version = "0.12", features = ["json", "multipart"] }
+ctrlc = "3.4"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+cocoa = "0.26"
+objc = "0.2"
+core-graphics = "0.24"
