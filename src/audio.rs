@@ -39,8 +39,8 @@ pub struct AudioRecorder {
     sample_rate: u32,
     channels: u16,
     is_recording: Arc<AtomicBool>,
-    stream: Option<cpal::Stream>,
-    selected_device: Option<Device>,
+    #[allow(dead_code)]
+    stream: cpal::Stream,
 }
 
 impl AudioRecorder {
@@ -54,53 +54,13 @@ impl AudioRecorder {
             .default_input_config()
             .context("failed to get default input config")?;
 
-        Ok(Self {
-            samples: Arc::new(Mutex::new(Vec::new())),
-            sample_rate: config.sample_rate().0,
-            channels: config.channels(),
-            is_recording: Arc::new(AtomicBool::new(false)),
-            stream: None,
-            selected_device: None,
-        })
-    }
+        let sample_rate = config.sample_rate().0;
+        let channels = config.channels();
+        let samples = Arc::new(Mutex::new(Vec::new()));
+        let is_recording = Arc::new(AtomicBool::new(false));
 
-    pub fn set_device(&mut self, device: Device) {
-        self.selected_device = Some(device);
-    }
-
-    pub fn start(&mut self) -> Result<()> {
-        if self.is_recording.load(Ordering::SeqCst) {
-            return Ok(());
-        }
-
-        let device = match &self.selected_device {
-            Some(d) => {
-                tracing::info!("using selected device: {:?}", d.name().unwrap_or_default());
-                d.clone()
-            }
-            None => {
-                let host = cpal::default_host();
-                let d = host.default_input_device()
-                    .context("no input device available")?;
-                tracing::info!("using default device: {:?}", d.name().unwrap_or_default());
-                d
-            }
-        };
-
-        let config = device
-            .default_input_config()
-            .context("failed to get default input config")?;
-
-        self.sample_rate = config.sample_rate().0;
-        self.channels = config.channels();
-
-        {
-            let mut samples = self.samples.lock().unwrap();
-            samples.clear();
-        }
-
-        let samples = Arc::clone(&self.samples);
-        let is_recording = Arc::clone(&self.is_recording);
+        let samples_clone = Arc::clone(&samples);
+        let is_recording_clone = Arc::clone(&is_recording);
 
         let err_fn = |err| tracing::error!("audio stream error: {}", err);
 
@@ -108,8 +68,8 @@ impl AudioRecorder {
             SampleFormat::F32 => device.build_input_stream(
                 &config.into(),
                 move |data: &[f32], _| {
-                    if is_recording.load(Ordering::SeqCst) {
-                        let mut samples = samples.lock().unwrap();
+                    if is_recording_clone.load(Ordering::SeqCst) {
+                        let mut samples = samples_clone.lock().unwrap();
                         samples.extend_from_slice(data);
                     }
                 },
@@ -117,13 +77,13 @@ impl AudioRecorder {
                 None,
             )?,
             SampleFormat::I16 => {
-                let samples_clone = Arc::clone(&samples);
-                let is_recording_clone = Arc::clone(&is_recording);
+                let samples_c = Arc::clone(&samples);
+                let is_rec_c = Arc::clone(&is_recording);
                 device.build_input_stream(
                     &config.into(),
                     move |data: &[i16], _| {
-                        if is_recording_clone.load(Ordering::SeqCst) {
-                            let mut samples = samples_clone.lock().unwrap();
+                        if is_rec_c.load(Ordering::SeqCst) {
+                            let mut samples = samples_c.lock().unwrap();
                             samples.extend(data.iter().map(|&s| s.to_sample::<f32>()));
                         }
                     },
@@ -132,13 +92,13 @@ impl AudioRecorder {
                 )?
             }
             SampleFormat::U16 => {
-                let samples_clone = Arc::clone(&samples);
-                let is_recording_clone = Arc::clone(&is_recording);
+                let samples_c = Arc::clone(&samples);
+                let is_rec_c = Arc::clone(&is_recording);
                 device.build_input_stream(
                     &config.into(),
                     move |data: &[u16], _| {
-                        if is_recording_clone.load(Ordering::SeqCst) {
-                            let mut samples = samples_clone.lock().unwrap();
+                        if is_rec_c.load(Ordering::SeqCst) {
+                            let mut samples = samples_c.lock().unwrap();
                             samples.extend(data.iter().map(|&s| s.to_sample::<f32>()));
                         }
                     },
@@ -150,21 +110,45 @@ impl AudioRecorder {
         };
 
         stream.play().context("failed to start audio stream")?;
-        self.is_recording.store(true, Ordering::SeqCst);
-        self.stream = Some(stream);
 
         tracing::info!(
-            "recording started: {} Hz, {} channels",
-            self.sample_rate,
-            self.channels
+            "audio stream ready: {} Hz, {} channels",
+            sample_rate,
+            channels
         );
+
+        Ok(Self {
+            samples,
+            sample_rate,
+            channels,
+            is_recording,
+            stream,
+        })
+    }
+
+    pub fn set_device(&mut self, _device: Device) {
+        // TODO: rebuild stream with new device
+        tracing::warn!("device switching not yet implemented");
+    }
+
+    pub fn start(&mut self) -> Result<()> {
+        if self.is_recording.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+
+        {
+            let mut samples = self.samples.lock().unwrap();
+            samples.clear();
+        }
+
+        self.is_recording.store(true, Ordering::SeqCst);
+        tracing::info!("recording started");
 
         Ok(())
     }
 
     pub fn stop(&mut self) -> Result<Vec<u8>> {
         self.is_recording.store(false, Ordering::SeqCst);
-        self.stream = None;
 
         let samples = {
             let samples = self.samples.lock().unwrap();

@@ -121,6 +121,7 @@ fn main() -> Result<()> {
                 InputEvent::TriggerReleased => {
                     if state == AppState::Recording {
                         menubar.set_status(AppStatus::Transcribing);
+                        menubar.pump(); // Force UI update before blocking
                         tracing::info!("transcribing...");
 
                         match recorder.stop() {
