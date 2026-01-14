@@ -42,7 +42,8 @@ impl TextInserter {
 
         // Optionally press Enter
         if self.auto_enter {
-            std::thread::sleep(std::time::Duration::from_millis(50));
+            // Wait for Cmd key to be fully released from paste
+            std::thread::sleep(std::time::Duration::from_millis(150));
             self.press_enter()?;
         }
 
@@ -62,6 +63,10 @@ impl TextInserter {
 
         let key_up = CGEvent::new_keyboard_event(source.clone(), enter_keycode, false)
             .map_err(|_| anyhow::anyhow!("failed to create key up event"))?;
+
+        // Explicitly clear all modifier flags
+        key_down.set_flags(CGEventFlags::CGEventFlagNull);
+        key_up.set_flags(CGEventFlags::CGEventFlagNull);
 
         key_down.post(CGEventTapLocation::HID);
         key_up.post(CGEventTapLocation::HID);

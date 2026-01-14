@@ -77,11 +77,20 @@ fn run_listener(tx: Sender<InputEvent>) -> Result<()> {
             }
             // Support Right Option key and Logitech gesture button
             // Gesture button sends KEY PRESS Unknown(65535) on press, KEY PRESS KeyA on release
+            // But KeyA sometimes gets dropped, so we also toggle on second press
             EventType::KeyPress(key) => {
-                if matches!(key, rdev::Key::AltGr | rdev::Key::Unknown(65535)) && !is_pressed {
-                    is_pressed = true;
-                    tracing::info!("trigger pressed: {:?}", key);
-                    let _ = tx.send(InputEvent::TriggerPressed);
+                tracing::debug!("key press: {:?}, is_pressed={}", key, is_pressed);
+                if matches!(key, rdev::Key::AltGr | rdev::Key::Unknown(65535)) {
+                    if is_pressed {
+                        // Second press while recording = stop (fallback for dropped release)
+                        is_pressed = false;
+                        tracing::info!("trigger toggled off: {:?}", key);
+                        let _ = tx.send(InputEvent::TriggerReleased);
+                    } else {
+                        is_pressed = true;
+                        tracing::info!("trigger pressed: {:?}", key);
+                        let _ = tx.send(InputEvent::TriggerPressed);
+                    }
                 } else if matches!(key, rdev::Key::KeyA) && is_pressed {
                     // Logitech gesture button release comes as KEY PRESS KeyA
                     is_pressed = false;
@@ -90,10 +99,17 @@ fn run_listener(tx: Sender<InputEvent>) -> Result<()> {
                 }
             }
             EventType::KeyRelease(key) => {
+                tracing::debug!("key release: {:?}, is_pressed={}", key, is_pressed);
                 // Normal key release for Right Option
                 if matches!(key, rdev::Key::AltGr) && is_pressed {
                     is_pressed = false;
                     tracing::info!("trigger released: {:?}", key);
+                    let _ = tx.send(InputEvent::TriggerReleased);
+                }
+                // Also check for Unknown(65535) release just in case
+                if matches!(key, rdev::Key::Unknown(65535)) && is_pressed {
+                    is_pressed = false;
+                    tracing::info!("trigger released (Unknown): {:?}", key);
                     let _ = tx.send(InputEvent::TriggerReleased);
                 }
             }
