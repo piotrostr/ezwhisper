@@ -17,7 +17,7 @@ pub struct Config {
 }
 
 fn default_language() -> String {
-    "en".to_string()
+    "auto".to_string()
 }
 
 impl Config {
@@ -32,6 +32,6 @@ mod tests {
 
     #[test]
     fn test_default_language() {
-        assert_eq!(default_language(), "en");
+        assert_eq!(default_language(), "auto");
     }
 }

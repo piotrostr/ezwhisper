@@ -40,15 +40,18 @@ impl ElevenLabsClient {
             self.language
         );
 
-        let form = multipart::Form::new()
+        let mut form = multipart::Form::new()
             .text("model_id", "scribe_v1")
-            .text("language_code", self.language.clone())
             .part(
                 "file",
                 multipart::Part::bytes(audio_data)
                     .file_name("audio.wav")
                     .mime_str("audio/wav")?,
             );
+
+        if self.language != "auto" {
+            form = form.text("language_code", self.language.clone());
+        }
 
         tracing::debug!("sending HTTP request...");
         let response = self
