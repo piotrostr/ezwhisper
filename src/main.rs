@@ -126,6 +126,7 @@ fn main() -> Result<()> {
                         menubar.set_status(AppStatus::Transcribing);
                         menubar.pump(); // Force UI update before blocking
                         tracing::info!("transcribing...");
+                        let round_trip_start = std::time::Instant::now();
 
                         match recorder.stop() {
                             Ok(audio_data) => {
@@ -168,6 +169,7 @@ fn main() -> Result<()> {
                                                         e
                                                     );
                                                 }
+                                                tracing::info!("round trip: {:?}", round_trip_start.elapsed());
                                             } else {
                                                 tracing::warn!("empty transcription");
                                             }
