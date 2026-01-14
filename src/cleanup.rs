@@ -41,6 +41,58 @@ impl TextCleaner {
         Self { api_key, client }
     }
 
+    pub async fn translate(&self, raw_text: &str) -> Result<String> {
+        if raw_text.trim().is_empty() {
+            return Ok(String::new());
+        }
+
+        let start = std::time::Instant::now();
+        tracing::debug!("translating to English with Haiku");
+
+        let request = ClaudeRequest {
+            model: "claude-3-5-haiku-latest",
+            max_tokens: 1024,
+            system: "You are a translator. Translate the input to English. Output ONLY the English translation with proper capitalization and punctuation. Never add commentary, notes, or explanations. If the input is already in English, just clean up capitalization and punctuation.",
+            messages: vec![Message {
+                role: "user",
+                content: raw_text.to_string(),
+            }],
+        };
+
+        let response = self
+            .client
+            .post("https://api.anthropic.com/v1/messages")
+            .header("x-api-key", &self.api_key)
+            .header("anthropic-version", "2023-06-01")
+            .header("content-type", "application/json")
+            .json(&request)
+            .send()
+            .await
+            .context("failed to send request to Claude")?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let error_text = response.text().await.unwrap_or_default();
+            tracing::warn!("Haiku translate failed ({}): {}, using raw text", status, error_text);
+            return Ok(raw_text.to_string());
+        }
+
+        let result: ClaudeResponse = response
+            .json()
+            .await
+            .context("failed to parse Claude response")?;
+
+        let translated = result
+            .content
+            .first()
+            .map(|c| c.text.clone())
+            .unwrap_or_else(|| raw_text.to_string());
+
+        tracing::info!("translation took {:?}", start.elapsed());
+
+        Ok(translated)
+    }
+
     pub async fn cleanup(&self, raw_text: &str) -> Result<String> {
         if raw_text.trim().is_empty() {
             return Ok(String::new());

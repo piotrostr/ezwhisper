@@ -68,8 +68,11 @@ fn main() -> Result<()> {
 
     let client = ElevenLabsClient::new(config.elevenlabs_api_key.clone(), config.ezwhisper_language.clone());
     let cleaner = config.anthropic_api_key.as_ref().map(|key| TextCleaner::new(key.clone()));
-    let use_cleanup = config.ezwhisper_cleanup && cleaner.is_some();
-    if use_cleanup {
+    let use_translate = config.ezwhisper_translate && cleaner.is_some();
+    let use_cleanup = config.ezwhisper_cleanup && cleaner.is_some() && !use_translate;
+    if use_translate {
+        tracing::info!("Haiku translate-to-English enabled");
+    } else if use_cleanup {
         tracing::info!("Haiku cleanup enabled");
     }
     let mut recorder = AudioRecorder::new()?;
@@ -133,7 +136,18 @@ fn main() -> Result<()> {
                                     match result {
                                         Ok(text) => {
                                             if !text.is_empty() {
-                                                let final_text = if use_cleanup {
+                                                let final_text = if use_translate {
+                                                    let translated = rt.block_on(async {
+                                                        cleaner.as_ref().unwrap().translate(&text).await
+                                                    });
+                                                    match translated {
+                                                        Ok(t) => t,
+                                                        Err(e) => {
+                                                            tracing::warn!("translate failed: {}, using raw", e);
+                                                            text
+                                                        }
+                                                    }
+                                                } else if use_cleanup {
                                                     let cleaned = rt.block_on(async {
                                                         cleaner.as_ref().unwrap().cleanup(&text).await
                                                     });

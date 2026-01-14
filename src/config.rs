@@ -13,6 +13,8 @@ pub struct Config {
     #[serde(default)]
     pub ezwhisper_cleanup: bool,
     #[serde(default)]
+    pub ezwhisper_translate: bool,
+    #[serde(default)]
     pub ezwhisper_enter: bool,
 }
 
