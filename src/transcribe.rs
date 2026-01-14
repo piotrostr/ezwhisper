@@ -40,6 +40,7 @@ impl ElevenLabsClient {
             self.language
         );
 
+        let start = std::time::Instant::now();
         let mut form = multipart::Form::new()
             .text("model_id", "scribe_v1")
             .part(
@@ -75,6 +76,7 @@ impl ElevenLabsClient {
         let result: TranscriptionResponse = serde_json::from_str(&body)
             .context("failed to parse ElevenLabs response")?;
 
+        tracing::info!("transcription took {:?}", start.elapsed());
         tracing::info!("raw transcription: {}", result.text);
 
         Ok(result.text)
