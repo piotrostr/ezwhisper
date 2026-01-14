@@ -86,7 +86,7 @@ impl MenuBar {
         unsafe {
             let _pool = NSAutoreleasePool::new(nil);
             let run_loop: id = msg_send![class!(NSRunLoop), currentRunLoop];
-            let date: id = msg_send![class!(NSDate), dateWithTimeIntervalSinceNow: 0.001f64];
+            let date: id = msg_send![class!(NSDate), dateWithTimeIntervalSinceNow: 0.0001f64];
             let _: () = msg_send![run_loop, runMode: NSDefaultRunLoopMode beforeDate: date];
         }
     }

@@ -182,7 +182,7 @@ fn main() -> Result<()> {
         menubar.pump();
 
         // Small sleep to prevent busy-waiting
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        std::thread::sleep(std::time::Duration::from_millis(1));
     }
 
     tracing::info!("ezwhisper stopped");
