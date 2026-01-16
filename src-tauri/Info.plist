@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSInputMonitoringUsageDescription</key>
+    <string>ezwhisper needs to monitor keyboard input to detect the trigger button for recording.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>ezwhisper needs microphone access to record audio for transcription.</string>
+</dict>
+</plist>

@@ -1,0 +1,42 @@
+{
+	"$schema": "https://schema.tauri.app/config/2",
+	"productName": "ezwhisper",
+	"version": "0.1.0",
+	"identifier": "com.piotrostr.ezwhisper",
+	"build": {
+		"beforeDevCommand": "npm run dev",
+		"devUrl": "http://localhost:1420",
+		"beforeBuildCommand": "npm run build",
+		"frontendDist": "../dist"
+	},
+	"app": {
+		"withGlobalTauri": true,
+		"windows": [
+			{
+				"title": "ezwhisper Settings",
+				"width": 450,
+				"height": 600,
+				"resizable": false,
+				"visible": false,
+				"center": true
+			}
+		],
+		"security": {
+			"csp": null
+		}
+	},
+	"bundle": {
+		"active": true,
+		"targets": ["app"],
+		"icon": [],
+		"macOS": {
+			"entitlements": "entitlements.plist",
+			"infoPlist": "Info.plist",
+			"exceptionDomain": "",
+			"frameworks": [],
+			"providerShortName": null,
+			"signingIdentity": null,
+			"minimumSystemVersion": "10.15"
+		}
+	}
+}

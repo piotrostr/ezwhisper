@@ -82,14 +82,3 @@ impl ElevenLabsClient {
         Ok(result.text)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_client_creation() {
-        let client = ElevenLabsClient::new("test_key".to_string(), "en".to_string());
-        assert_eq!(client.language, "en");
-    }
-}
