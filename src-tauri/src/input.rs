@@ -80,6 +80,9 @@ mod macos {
     // Logitech gesture button sends keycode 65535 (0xFFFF)
     const LOGITECH_GESTURE_KEYCODE: i64 = 65535;
 
+    // Right Option key (kVK_RightOption = 0x3D = 61)
+    const RIGHT_OPTION_KEYCODE: i64 = 61;
+
     // Mouse button codes for Logitech buttons (side buttons)
     const TRIGGER_MOUSE_BUTTONS: [i64; 5] = [3, 4, 5, 6, 8];
 
@@ -111,8 +114,9 @@ mod macos {
             match event_type {
                 KEY_DOWN => {
                     let keycode = CGEventGetIntegerValueField(event, KEYBOARD_EVENT_KEYCODE);
-                    tracing::info!("KEY_DOWN keycode: {} (trigger={})", keycode, keycode == LOGITECH_GESTURE_KEYCODE);
-                    if keycode == LOGITECH_GESTURE_KEYCODE {
+                    let is_trigger = keycode == LOGITECH_GESTURE_KEYCODE || keycode == RIGHT_OPTION_KEYCODE;
+                    tracing::info!("KEY_DOWN keycode: {} (trigger={})", keycode, is_trigger);
+                    if is_trigger {
                         // Always send on key down - toggle mode handles state
                         let _ = tx.send(InputEvent::TriggerPressed);
                     }
