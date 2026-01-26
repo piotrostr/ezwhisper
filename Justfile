@@ -1,16 +1,16 @@
 # run in development mode
 dev:
-    npm run tauri dev
+    bun run tauri dev
 
 # build release
 build:
-    npm run build
+    bun run build
     cargo build --release --manifest-path src-tauri/Cargo.toml
 
 # build and install the app to /Applications
 install:
-    npm run build
-    npm run tauri build
+    bun run build
+    bun run tauri build
     @echo "Installing to /Applications..."
     rm -rf /Applications/ezwhisper.app
     cp -r src-tauri/target/release/bundle/macos/ezwhisper.app /Applications/

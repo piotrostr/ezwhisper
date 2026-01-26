@@ -56,6 +56,8 @@ mod macos {
         fn CGEventTapEnable(tap: *mut std::ffi::c_void, enable: bool);
 
         fn CGEventGetIntegerValueField(event: *mut std::ffi::c_void, field: u32) -> i64;
+
+        fn CGEventGetFlags(event: *mut std::ffi::c_void) -> u64;
     }
 
     #[link(name = "CoreFoundation", kind = "framework")]
@@ -80,17 +82,21 @@ mod macos {
     // Logitech gesture button sends keycode 65535 (0xFFFF)
     const LOGITECH_GESTURE_KEYCODE: i64 = 65535;
 
-    // Right Option key (kVK_RightOption = 0x3D = 61)
-    const RIGHT_OPTION_KEYCODE: i64 = 61;
-
     // Mouse button codes for Logitech buttons (side buttons)
     const TRIGGER_MOUSE_BUTTONS: [i64; 5] = [3, 4, 5, 6, 8];
 
     // Event type constants
     const KEY_DOWN: u32 = 10;
     const KEY_UP: u32 = 11;
+    const FLAGS_CHANGED: u32 = 12;
     const OTHER_MOUSE_DOWN: u32 = 25;
     const OTHER_MOUSE_UP: u32 = 26;
+
+    // Right Option key detection via flags
+    // kCGEventFlagMaskAlternate = 0x00080000 (option key is held)
+    // NX_DEVICERALTKEYMASK = 0x00000040 (specifically right option)
+    const FLAG_MASK_ALTERNATE: u64 = 0x00080000;
+    const FLAG_MASK_RIGHT_ALT: u64 = 0x00000040;
 
     // Event field constants
     const KEYBOARD_EVENT_KEYCODE: u32 = 9;
@@ -99,6 +105,7 @@ mod macos {
     // Use static for callback state since CGEventTap callback must be extern "C"
     static TX: OnceLock<Sender<InputEvent>> = OnceLock::new();
     static IS_PRESSED: AtomicBool = AtomicBool::new(false);
+    static RIGHT_OPT_PRESSED: AtomicBool = AtomicBool::new(false);
 
     extern "C" fn callback(
         _proxy: *mut std::ffi::c_void,
@@ -114,7 +121,7 @@ mod macos {
             match event_type {
                 KEY_DOWN => {
                     let keycode = CGEventGetIntegerValueField(event, KEYBOARD_EVENT_KEYCODE);
-                    let is_trigger = keycode == LOGITECH_GESTURE_KEYCODE || keycode == RIGHT_OPTION_KEYCODE;
+                    let is_trigger = keycode == LOGITECH_GESTURE_KEYCODE;
                     tracing::info!("KEY_DOWN keycode: {} (trigger={})", keycode, is_trigger);
                     if is_trigger {
                         // Always send on key down - toggle mode handles state
@@ -125,6 +132,20 @@ mod macos {
                     let keycode = CGEventGetIntegerValueField(event, KEYBOARD_EVENT_KEYCODE);
                     tracing::info!("KEY_UP keycode: {}", keycode);
                     // We don't use KEY_UP in toggle mode
+                }
+                FLAGS_CHANGED => {
+                    let flags = CGEventGetFlags(event);
+                    let right_opt_down =
+                        (flags & FLAG_MASK_ALTERNATE != 0) && (flags & FLAG_MASK_RIGHT_ALT != 0);
+
+                    if right_opt_down && !RIGHT_OPT_PRESSED.load(Ordering::SeqCst) {
+                        RIGHT_OPT_PRESSED.store(true, Ordering::SeqCst);
+                        tracing::info!("Right Option pressed (flags=0x{:x})", flags);
+                        let _ = tx.send(InputEvent::TriggerPressed);
+                    } else if !right_opt_down && RIGHT_OPT_PRESSED.load(Ordering::SeqCst) {
+                        RIGHT_OPT_PRESSED.store(false, Ordering::SeqCst);
+                        tracing::info!("Right Option released (flags=0x{:x})", flags);
+                    }
                 }
                 OTHER_MOUSE_DOWN => {
                     let button = CGEventGetIntegerValueField(event, MOUSE_EVENT_BUTTON_NUMBER);
@@ -155,6 +176,7 @@ mod macos {
         // Event mask for keyboard and mouse events
         let event_mask: u64 = (1 << KEY_DOWN)
             | (1 << KEY_UP)
+            | (1 << FLAGS_CHANGED)
             | (1 << OTHER_MOUSE_DOWN)
             | (1 << OTHER_MOUSE_UP);
 

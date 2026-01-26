@@ -64,7 +64,7 @@ fn simulate_paste() -> Result<()> {
 
 #[cfg(target_os = "macos")]
 fn simulate_return() -> Result<()> {
-    use core_graphics::event::CGEvent;
+    use core_graphics::event::{CGEvent, CGEventFlags};
     use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 
     const KEY_RETURN: u16 = 36;
@@ -74,10 +74,13 @@ fn simulate_return() -> Result<()> {
 
     let key_down = CGEvent::new_keyboard_event(source.clone(), KEY_RETURN, true)
         .map_err(|_| anyhow::anyhow!("failed to create key down event"))?;
+    // Clear all modifiers so held keys (like right option) don't affect this
+    key_down.set_flags(CGEventFlags::CGEventFlagNull);
     key_down.post(core_graphics::event::CGEventTapLocation::HID);
 
     let key_up = CGEvent::new_keyboard_event(source, KEY_RETURN, false)
         .map_err(|_| anyhow::anyhow!("failed to create key up event"))?;
+    key_up.set_flags(CGEventFlags::CGEventFlagNull);
     key_up.post(core_graphics::event::CGEventTapLocation::HID);
 
     Ok(())
